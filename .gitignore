@@ -1,3 +1,6 @@
+# Whisper / ML Models (large binary files - download separately)
+models/
+
 # Python
 __pycache__/
 *.py[cod]
