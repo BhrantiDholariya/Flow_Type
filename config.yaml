@@ -1,0 +1,20 @@
+# FlowType Configuration
+
+model:
+  size: "base"          # Switched back to base for fast download
+  device: "cpu"         # options: cpu, cuda
+  compute_type: "int8"  # options: int8, float16 (int8 is best for CPU)
+  beam_size: 5          # higher value = better accuracy but slower
+  initial_prompt: "Jio, Hotstar, WhatsApp, Gujarati, Hindi, transcription, personal assistant."
+
+recording:
+  sample_rate: 16000
+  vad_threshold: 0.3
+
+hotkey: "shift"         # Options: shift, ctrl, alt, caps_lock
+
+formatting:
+  auto_punctuate: true
+  auto_capitalize: true
+  remove_fillers: true
+  convert_emojis: true

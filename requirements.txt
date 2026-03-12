@@ -1,0 +1,10 @@
+faster-whisper
+sounddevice
+pynput
+pyperclip
+silero-vad
+numpy
+scipy
+PyYAML
+torch
+torchaudio
