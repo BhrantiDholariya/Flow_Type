@@ -11,7 +11,7 @@ recording:
   sample_rate: 16000
   vad_threshold: 0.3
 
-hotkey: "shift"         # Options: shift, ctrl, alt, caps_lock
+hotkey: "ctrl+alt"     # Options: ctrl+alt, right_ctrl, right_shift, caps_lock
 
 formatting:
   auto_punctuate: true

@@ -77,10 +77,73 @@ class TextFormatter:
             if text and text[-1] not in ".!?":
                 text += "."
 
-        # 6. Basic Bullet Detection
-        # Convert "First ... Second ... Third ..." to list items if they are at start
-        # This is a bit complex for rule-based, but let's do a simple version
-        if text.lower().startswith("first "):
-            text = "• " + text[6:]
+        # 6. List and Bullet Detection
+        text = self.handle_lists(text)
+
+        return text
+
+    def handle_lists(self, text):
+        """
+        Converts phrases like "bullet [text]", "next point [text]", or 
+        "list: item, item, item" into actual bulleted lists.
+        """
+        # 1. Handle explicit list triggers (e.g., "features: X, Y, Z" or "including X and Y")
+        list_triggers = [
+            r"points?:", r"bullet list:", r"list follows:", r"including:", 
+            r"features?:", r"sections?:", r"items?:", r"components?:",
+            r"that is", r"such as", r"namely"
+        ]
+        for trigger in list_triggers:
+            # Check for trigger followed by colon or just a space if it's "that is/such as"
+            pattern = rf"{trigger}[:\s]" if not trigger.endswith(":") else trigger
+            match = re.search(pattern, text, re.IGNORECASE)
+            
+            if match:
+                trigger_end = match.end()
+                prefix = text[:trigger_end]
+                list_part = text[trigger_end:]
+                
+                # Split by commas or "and" if it's a list-like structure (at least one comma or "and")
+                if "," in list_part or " and " in list_part.lower():
+                    items = re.split(r",\s*|\n|(?:\s+and\s+)", list_part, flags=re.IGNORECASE)
+                    formatted_items = [f"• {i.strip().capitalize()}" for i in items if i.strip()]
+                    
+                    if len(formatted_items) > 1:
+                        return prefix + "\n\n" + "\n\n".join(formatted_items)
+
+        # 2. Handle inline bullet keywords (e.g., "I need bullet milk bullet eggs")
+        # Supports "bullet", "point", "next point", "item"
+        bullet_keywords = [r"\bbullet\b", r"\bnext point\b", r"\bpoint\b", r"\bitem\b"]
         
+        # Use a regex to find all keyword occurrences
+        combined_pattern = "|".join(bullet_keywords)
+        
+        if re.search(combined_pattern, text, re.IGNORECASE):
+            # Split the text by these keywords
+            parts = re.split(combined_pattern, text, flags=re.IGNORECASE)
+            
+            # If the first part is empty, the first word was a bullet
+            # Otherwise, the first part is the intro text
+            intro = parts[0].strip()
+            if intro:
+                new_text = intro + "\n\n"
+            else:
+                new_text = ""
+                
+            for part in parts[1:]:
+                clean_part = part.strip()
+                if clean_part:
+                    # Clean up trailing punctuation since we're making it a list item
+                    clean_part = clean_part.rstrip(".,")
+                    new_text += f"• {clean_part.capitalize()}\n\n"
+            
+            return new_text.strip()
+
+        # 3. Handle sequential enumeration (e.g., "First... Second... Third...")
+        if text.lower().startswith("first "):
+            text = "• " + text[6:].capitalize()
+            # If there are "second", "third", etc. in the same text
+            text = re.sub(r"\s+second\s+", "\n\n• ", text, flags=re.IGNORECASE)
+            text = re.sub(r"\s+third\s+", "\n\n• ", text, flags=re.IGNORECASE)
+
         return text

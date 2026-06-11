@@ -14,7 +14,7 @@ DEFAULT_CONFIG = {
         "chunk_size": 1024,
         "vad_threshold": 0.5
     },
-    "hotkey": "<shift>",  # Default hotkey: Shift (hold to record)
+    "hotkey": "fn",  # Default hotkey: fn (hold to record). Note: Fn is handled at hardware level on most PCs and may not be interceptable - use 'right_shift' or 'right_ctrl' as fallback.
     "formatting": {
         "auto_punctuate": True,
         "auto_capitalize": True,

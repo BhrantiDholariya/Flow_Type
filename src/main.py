@@ -39,32 +39,55 @@ class FlowTypeApp:
         )
         self.formatter = TextFormatter(config=self.config.get("formatting"))
         
-        self.hotkey = self.config.get("hotkey", "<shift>")
+        self.hotkey = self.config.get("hotkey", "right_ctrl").lower()
         self.is_recording = False
         self.controller = keyboard.Controller()
+        self.active_keys = set()
+
+    def get_key_name(self, key):
+        """Helper to get a clean string name for any key."""
+        try:
+            name = key.name.lower()
+            # Normalize common names
+            if name.startswith('ctrl'): return 'ctrl'
+            if name.startswith('alt'): return 'alt'
+            if name.startswith('shift'): return 'shift'
+            return name
+        except AttributeError:
+            # For character keys
+            return str(key).lower().replace("'", "")
+
+    def check_hotkey_pressed(self):
+        """Checks if the configured hotkey(s) are currently pressed."""
+        targets = [t.strip() for t in self.hotkey.split("+")]
+        return all(t in self.active_keys for t in targets)
 
     def on_press(self, key):
-        # Handle Shift (or other non-character keys)
-        try:
-            k = key.name
-        except AttributeError:
-            k = str(key)
-
-        if self.hotkey in k.lower() and not self.is_recording:
+        k = self.get_key_name(key)
+        self.active_keys.add(k)
+        
+        # log what keys are being seen for debugging if needed
+        # logging.debug(f"Key pressed: {k}, Active: {self.active_keys}")
+        
+        if self.check_hotkey_pressed() and not self.is_recording:
             self.start_process()
 
     def on_release(self, key):
-        try:
-            k = key.name
-        except AttributeError:
-            k = str(key)
+        k = self.get_key_name(key)
+        if k in self.active_keys:
+            self.active_keys.remove(k)
 
-        if self.hotkey in k.lower() and self.is_recording:
+        if not self.check_hotkey_pressed() and self.is_recording:
             self.stop_process()
 
     def start_process(self):
-        self.is_recording = True
-        self.recorder.start_recording()
+        try:
+            self.is_recording = True
+            self.recorder.start_recording()
+        except Exception as e:
+            logging.error(f"Could not start recording: {e}")
+            self.is_recording = False
+            # Optional: Play a "fail" sound here if implemented
 
     def stop_process(self):
         self.is_recording = False
@@ -111,29 +134,30 @@ class FlowTypeApp:
         logging.info(f"Done! Processed in {duration:.2f}s. Result: {formatted_text}")
 
     def paste_text(self, text):
-        logging.info(f"Attempting to paste: {text}")
+        logging.info(f"Attempting to output text (len: {len(text)})")
         
-        # Store current clipboard
-        old_clipboard = pyperclip.paste()
-        pyperclip.copy(text)
-        
-        # Give Windows a moment to update the clipboard
-        time.sleep(0.3)
-        
-        # Simulate Ctrl+V
-        with self.controller.pressed(keyboard.Key.ctrl):
-            self.controller.press('v')
-            self.controller.release('v')
-            
-        # Fallback: if it's a short string, we can also try typing it directly 
-        # to ensure it works in apps that block Ctrl+V
+        # Use simple typing for short text (faster/more reliable in some apps)
+        # Use Ctrl+V for long text (much faster for paragraphs)
         if len(text) < 50:
-             logging.info("Using backup typing method for short text...")
-             time.sleep(0.1)
-             self.controller.type(text)
-             
-        time.sleep(0.2)
-        pyperclip.copy(old_clipboard)
+            logging.info("Using typing method...")
+            self.controller.type(text)
+        else:
+            logging.info("Using paste method...")
+            # Store current clipboard
+            old_clipboard = pyperclip.paste()
+            pyperclip.copy(text)
+            
+            # Give Windows a moment to update the clipboard
+            time.sleep(0.2)
+            
+            # Simulate Ctrl+V
+            with self.controller.pressed(keyboard.Key.ctrl):
+                self.controller.press('v')
+                self.controller.release('v')
+                
+            # Wait a bit before restoring clipboard to ensure the paste finished
+            time.sleep(0.3)
+            pyperclip.copy(old_clipboard)
 
     def run(self):
         logging.info(f"FlowType is active. Hold {self.hotkey} to record.")
